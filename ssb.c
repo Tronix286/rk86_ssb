@@ -264,6 +264,43 @@ static uint8_t key_down=0;
 static uint8_t stop_loop=0;
 static char str_buf[40];	// string buffer
 
+void render_level() __naked
+{
+  #asm 
+
+    lxi de,_ar
+    lhld _radio86rkVideoMem
+    lda _radio86rkVideoBpl
+    mov c,a
+    mvi b,0
+    dad bc
+    dad bc
+    lxi bc,15
+    mvi a,0
+    push psw
+print3_loop:
+    ldax d
+    ora  a
+    jz end_str
+    mov  m, a
+    inx  h
+    inx  d
+    jmp  print3_loop
+end_str:
+    pop psw
+    inr a
+    cpi 25
+    jz end_lp
+    push psw
+    inx d
+    dad bc
+    jmp print3_loop
+end_lp:
+    ret
+  #endasm
+}
+
+/*
 void render_level()
 {
 	static char * line_ptr;
@@ -281,7 +318,7 @@ void render_level()
 	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
 	print(0,28,str_buf);
 }
-
+*/
 void load(uint8_t lvl);
 
 void pollInput()
@@ -1005,6 +1042,10 @@ void frameLoop()
 	
 	/*copyA(ar,arp);*/
 	//updatePf(ar);
+
+	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
+	print(0,28,str_buf);
+
 	render_level();
 	
 	if(moneyl == 0) got_all_money = 1;
@@ -1042,7 +1083,7 @@ void main()
 	while(1)
 	{
 	frameLoop();
-	sprintf((char *)str_buf,"%02X",frames);
+	sprintf((char *)str_buf,"FRM:%02X",frames);
 	print(20,30,str_buf);
 	}
 }
