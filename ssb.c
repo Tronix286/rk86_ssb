@@ -113,9 +113,8 @@ void print(uchar x, uchar y, char* text) {
 char kbhit2() __naked {
   #asm 
     call 0F81Bh
-    inr a
-    mov h,a
-    mvi l,0
+    mov l,a
+    mvi h,0
     ret
   #endasm
 }
@@ -233,7 +232,35 @@ static unsigned char lev4[25][64] = {
 "                                                               ",
 "                                                               "
 };
-#define SP 0x20
+static unsigned char lev5[25][64] = {
+"                                                               ",
+"                                                               ",
+"                                                    e          ",
+"                       Y                            ---###     ",
+" $            \x09        #                               \\#/     ",
+" #                     #                                       ",
+"                      ### ####T         #####                  ",
+"                      ###                                      ",
+"                       @                                       ",
+"                       @                                       ",
+"            O    O \"   @             O                         ",
+"  \"##### ################\"######   ##########\"####             ",
+"    \\\\\\\x1b \x1b///      #############   ####    #####               ",
+"     \\\\\x1b \x1b//           #                                       ",
+"   #  \\###/            #                                       ",
+" # #                   #                                       ",
+" #                     #   ((((((())))))                       ",
+" # T              ####~#                                       ",
+"   #                 ###      $                                ",
+" # #                   ########T      ## ##T            ##\"##  ",
+" #              $      #####           \x1b \x1b               ###   ",
+" # T            @#######               ###                #    ",
+"                     ###                                  #--- ",
+"                       #                                --#    ",
+"                       #                                  #    "
+};
+
+#define SP 0x20                                                                  
 #define PL 0x09
 #define EX 0x1E
 
@@ -241,6 +268,7 @@ static uint8_t level=1;
 static uint8_t rflag=0;
 static uint8_t frames=0;
 static uint8_t moneyl=0;
+static uint8_t oldmoneyl=0;
 static uint8_t tired=0;
 static uint8_t tired_i=0;
 static uint8_t got_all_money=0;
@@ -322,10 +350,10 @@ void pollInput()
 	if(key_right == 2) key_right = 0;
 	if(key_down == 2) key_down = 0;
 
-	//key = kbhit2();
-	if (kbhit2())
+	key = kbhit2();
+	if (key != 0xFF)
 	{
-	key = getch();
+	//key = getch();
 	switch ((uint8_t)key)
 	{
 		case KEY_UP: key_up = 1;
@@ -338,8 +366,8 @@ void pollInput()
 			     break;
 		default:
 	}
-	sprintf((char *)str_buf,"KEY=%02X",key);
-	print(0,30,str_buf);
+	//sprintf((char *)str_buf,"KEY=%02X",key);
+	//print(0,30,str_buf);
 	}
 
 	if (stop_loop)
@@ -349,7 +377,7 @@ void pollInput()
 		if (stop_loop == 1)
 		{
 			level++;
-			if (level > 4) level = 1;
+			if (level > 5) level = 1;
 			load(level);
 		}
 		else
@@ -545,7 +573,7 @@ void doFrame1()
 {
 	static uint8_t x,y;
 	static uint8_t dead;
-	static moneyl;
+	//static moneyl;
 	static int8_t dir,dx,dy;
 	static uint8_t gr;
 	static char ch,ob,od,fl;
@@ -1057,11 +1085,14 @@ void frameLoop()
 	render_level();
 
 	/*copyA(ar,arp);*/
-	//updatePf(ar);
+	//updatePf(ar)
+	if (oldmoneyl != moneyl)
+	{
+		sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
+		print(0,28,str_buf);
+		oldmoneyl = moneyl;
+	}
 
-	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
-	print(0,28,str_buf);
-	
 	if(moneyl == 0) got_all_money = 1;
 	
 	if(tired)
@@ -1073,8 +1104,8 @@ void frameLoop()
 			tired = 0;
 		}
 	}
-	sprintf((char *)str_buf,"FRM:%02X",frames);
-	print(20,30,str_buf);
+	//sprintf((char *)str_buf,"FRM:%02X",frames);
+	//print(20,30,str_buf);
    }
 }
 
@@ -1087,6 +1118,7 @@ void load(uint8_t lvl)
 	else if (lvl == 2) memcpy(ar,lev2,sizeof(ar));
 	else if (lvl == 3) memcpy(ar,lev3,sizeof(ar));
 	else if (lvl == 4) memcpy(ar,lev4,sizeof(ar));
+	else if (lvl == 5) memcpy(ar,lev5,sizeof(ar));
 	memcpy(arp,ar,sizeof(ar));
 }
 
