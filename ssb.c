@@ -109,25 +109,8 @@ void print(uchar x, uchar y, char* text) {
   print2(charAddr(x, y), text);
 }
 
-void HideCursor(void) {
-    #asm 
-        ld   c, 01Bh
-        call 0F809h
-        ld   c, 97
-        jp   0F809h
-    #endasm
-}
 
-void ShowCursor(void) {
-    #asm
-        ld   c, 01Bh
-        call 0F809h
-        ld   c, 98
-        jp   0F809h
-    #endasm
-}
-
-char kbhit2() __z88dk_fastcall __naked {
+char kbhit2() __naked {
   #asm 
     call 0F81Bh
     inr a
@@ -139,6 +122,7 @@ char kbhit2() __z88dk_fastcall __naked {
 
 static unsigned char arp[25][64];
 static unsigned char ar[25][64];
+
 
 static unsigned char lev1[25][64] = {
 "###############################################################",
@@ -267,36 +251,41 @@ static uint8_t key_down=0;
 static uint8_t stop_loop=0;
 static char str_buf[40];	// string buffer
 
+// draw _arp at screen, copy _arp to _ar
 void render_level() __naked
 {
   #asm 
 
-    lxi de,_ar
+    lxi de,_arp	
     lhld _radio86rkVideoMem
     lda _radio86rkVideoBpl
     mov c,a
     mvi b,0
     dad bc
-    dad bc
-    lxi bc,15
-    mvi a,0
+    dad bc		; start at Y = 2
+    lxi bc,_ar
+    xra a		; A - y counter=0
     push psw
 print3_loop:
-    ldax d
-    ora  a
-    jz end_str
-    mov  m, a
-    inx  h
+    ldax d		; A = _arp[]
+    stax b		; _ar[] = A
     inx  d
+    inx b
+    ora  a		; A = 0 ?
+    jz end_str
+    mov  m, a		; rkvideoMem = A
+    inx  h
     jmp  print3_loop
 end_str:
     pop psw
     inr a
-    cpi 25
+    cpi 25		; Y = 25?
     jz end_lp
     push psw
-    inx d
+    push b
+    lxi bc,15
     dad bc
+    pop b
     jmp print3_loop
 end_lp:
     ret
@@ -376,6 +365,7 @@ void replace(char a,char b)
 	for(x=0; x<63; x++)
 		if(ar[y][x]==a)
 			arp[y][x]=b;
+
 }
 
 void swap(char a,char b)
@@ -455,8 +445,12 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 //	if(y >= 25 || y < 0 || x >= 64 || x < 0) return 1;
 	if (y > 24 || x > 63) return 1;
 	
-        char ob = ar[y][x];
-	char ob1 = arp[y][x];
+	char *ptr = &ar[y][x];
+	char *arpptr = &arp[y][x];
+        //char ob = ar[y][x];
+	//char ob1 = arp[y][x];
+        char ob = *ptr;
+	char ob1 = *arpptr;
 	int8_t d,dir;
 	
 	switch(ch)
@@ -472,7 +466,8 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 			}
 			else if(ob == '$')
 			{
-				arp[y][x] = SP;
+				//arp[y][x] = SP;
+				*arpptr = SP;
 				moneyl--;
 				return 0;
 			}
@@ -492,13 +487,18 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 				else if(key_right) dir++;
 				if(dir)
 				{
-					if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && ar[y][x-dir]==PL)
+					//if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && ar[y][x-dir]==PL)
+					if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && *(ptr-dir)==PL)
 					{
-						arp[y][x+dir] = ob;
-						arp[y][x] = SP;
+						//arp[y][x+dir] = ob;
+						*(arpptr+dir) = ob;
+						//arp[y][x] = SP;
+						*arpptr = SP;
 						
-						if(ar[y+1][x]==';')
-							arp[y+2][x]=SP;
+						//if(ar[y+1][x]==';')
+						if (*(ptr+64)==';')
+							//arp[y+2][x]=SP;
+							*(arpptr+128)=SP;
 							
 						tired = 1;
 						return 0;
@@ -522,7 +522,8 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 			{
 				if( probe(x,y+1,ob) && (probe(x+d,y,ob)==0))
 				{
-					arp[y][x+d] = ob;
+					//arp[y][x+d] = ob;
+					*(arpptr+d)=ob;
 					return 0;
 				}
 			}
@@ -558,8 +559,8 @@ void doFrame1()
 	if(key_up) key_up = 2;
 	if(key_down) key_down = 2;
 
-	ptr = (char*)&ar;
-	arpptr = (char*)&arp;
+	ptr = (char*)ar;
+	arpptr = (char*)arp;
 	x = 0;
 	y = 0;
 	while (y !=25)	
@@ -971,14 +972,17 @@ void doFrame8()
 	static int8_t dir;
 	static char ch,ob,od;
 	static char *ptr;
+	static char *arpptr;
 
-	ptr = (char*)&ar;
+	ptr = (char*)ar;
+	arpptr = (char*)arp;
 	x = 0;
 	y = 0;
 	while (y !=25)	
 	//for(y=0;y<25;y++) for(x=0;x<63;x++)
 	{
-		ch = ar[y][x];
+		//ch = ar[y][x];
+		ch = *ptr;
 		if (ch == 0x20 || ch == 0x23)
 			;
 		else
@@ -987,11 +991,13 @@ void doFrame8()
 			case '=':
 				if(y > 0)
 				{
-					ob = ar[y-1][x];
+					//ob = ar[y-1][x];
+					ob = *(ptr-64);
 					if(ob != SP && ob != PL)
 					{
 						if(probe(x,y+1,ob)==0)
-							arp[y+1][x] = ob;
+							//arp[y+1][x] = ob;
+							*(arpptr+64) = ob;
 					}
 				}
 				break;
@@ -1002,24 +1008,29 @@ void doFrame8()
 				dir = (ch=='d')?-1:1;
 				{
 					if(probe(x+dir,y,ch))
-						arp[y][x]=od;
+						//arp[y][x]=od;
+						*arpptr = od;
 					else
 					{
-						arp[y][x]=SP;
-						arp[y][x+dir]=ch;
+						//arp[y][x]=SP;
+						*arpptr=SP;
+						//arp[y][x+dir]=ch;
+						*(arpptr+dir)=ch;
 					}
 				}
 				break;					
 		}
 	ptr++;
+	arpptr++;
 	x++;
-	if (x == 63) {x = 0; y++; ptr++;}
+	if (x == 63) {x = 0; y++; ptr++; arpptr++;}
 	}
 }
 
 void frameLoop()
 {
-	
+   while(1)
+   {
 	pollInput();
 	//copyA(arp,ar);
 	//memcpy(arp,ar,sizeof(ar));
@@ -1041,15 +1052,15 @@ void frameLoop()
 	}
 	frames++;
 	
-	memcpy(ar,arp,sizeof(ar));
+	//memcpy(ar,arp,sizeof(ar));
 	
+	render_level();
+
 	/*copyA(ar,arp);*/
 	//updatePf(ar);
 
 	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
 	print(0,28,str_buf);
-
-	render_level();
 	
 	if(moneyl == 0) got_all_money = 1;
 	
@@ -1062,6 +1073,9 @@ void frameLoop()
 			tired = 0;
 		}
 	}
+	sprintf((char *)str_buf,"FRM:%02X",frames);
+	print(20,30,str_buf);
+   }
 }
 
 void load(uint8_t lvl)
@@ -1083,10 +1097,5 @@ void main()
 	print(22,0,"\x85SUPER SERIF BROTHERS \x80");
 	load(level);
 	//render_level();
-	while(1)
-	{
 	frameLoop();
-	sprintf((char *)str_buf,"FRM:%02X",frames);
-	print(20,30,str_buf);
-	}
 }
