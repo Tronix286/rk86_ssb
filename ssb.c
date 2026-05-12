@@ -128,7 +128,7 @@ char kbhit2() __z88dk_fastcall __naked {
   #asm 
     call 0F81Bh
     inr a
-    ld h,a
+    mov h,a
     mvi l,0
     ret
   #endasm
@@ -330,10 +330,10 @@ void pollInput()
 	if(key_right == 2) key_right = 0;
 	if(key_down == 2) key_down = 0;
 
-	//key = kbhit2();
-	if (kbhit2())
+	key = kbhit2();
+	if (key != 0xFF)
 	{
-	key = getch();
+	//key = getch();
 	switch ((uint8_t)key)
 	{
 		case KEY_UP: key_up = 1;
