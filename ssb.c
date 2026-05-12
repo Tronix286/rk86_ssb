@@ -35,6 +35,9 @@ void RADIO86RK_SCREEN_END(uint16_t MEM_ADDR, uint8_t FULL_HEIGHT, uint8_t FONT, 
   VG75[0] = (((FONT&0xF) >= 9) ? 0 : 0x40) | (FULL_HEIGHT-1); 
   VG75[0] = FONT; 
   VG75[0] = ((HIDDEN_ATTRIB) ? 0 : 0x40) | ((FONT&0xF)==9 ? 0x80 : 0) | 0x13; 
+  VG75[1]= 0x80;
+  VG75[0]= 100;
+  VG75[0]= 100;
   VG75[1] = 0x23; 
   while((VG75[1] & 0x20) == 0); 
   while((VG75[1] & 0x20) == 0); 
@@ -330,10 +333,10 @@ void pollInput()
 	if(key_right == 2) key_right = 0;
 	if(key_down == 2) key_down = 0;
 
-	key = kbhit2();
-	if (key != 0xFF)
+	//key = kbhit2();
+	if (kbhit2())
 	{
-	//key = getch();
+	key = getch();
 	switch ((uint8_t)key)
 	{
 		case KEY_UP: key_up = 1;
