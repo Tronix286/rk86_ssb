@@ -1079,7 +1079,7 @@ void load(uint8_t lvl)
 void main()
 {
 	radio86rkScreen2b();
-	HideCursor();
+	//HideCursor();
 	print(22,0,"\x85SUPER SERIF BROTHERS \x80");
 	load(level);
 	//render_level();
