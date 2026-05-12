@@ -266,9 +266,17 @@ static char str_buf[40];	// string buffer
 
 void render_level()
 {
-for (uchar y=0;y<25;y++) 
-    //for (uchar x=0;x<64;x++)  
-	print(0,y+2,ar[y]);
+	static char * line_ptr;
+	static uint8_t y;
+	y = 0;
+	line_ptr = (char*)&ar;
+	//for (uchar y=0;y<25;y++) 
+	while (y != 25)
+		{
+			print(0,y+2,line_ptr);
+			y++;
+			line_ptr+=64;
+		}
 
 	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
 	print(0,28,str_buf);
@@ -489,6 +497,7 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 			break;
 	}
 	return !(ob==SP && ob1==SP);
+
 }
 
 void doFrame1()
@@ -519,10 +528,7 @@ void doFrame1()
 		//ch = ar[y][x];
 		ch = *ptr;
 		
-		if (ch == 0x20)
-			;
-		else
-		if (ch == 0x23)
+		if (ch == 0x20 || ch == 0x23)
 			;
 		else
 		if(canfall(ch) && y == 24)
@@ -933,10 +939,7 @@ void doFrame8()
 	//for(y=0;y<25;y++) for(x=0;x<63;x++)
 	{
 		ch = ar[y][x];
-		if (ch == 0x20)
-			;
-		else
-		if (ch == 0x23)
+		if (ch == 0x20 || ch == 0x23)
 			;
 		else
 		switch(ch)
@@ -979,7 +982,7 @@ void frameLoop()
 	
 	pollInput();
 	//copyA(arp,ar);
-	memcpy(arp,ar,sizeof(ar));
+	//memcpy(arp,ar,sizeof(ar));
 	
 	if(rflag)
 	{
@@ -1026,6 +1029,7 @@ void load(uint8_t lvl)
 	else if (lvl == 2) memcpy(ar,lev2,sizeof(ar));
 	else if (lvl == 3) memcpy(ar,lev3,sizeof(ar));
 	else if (lvl == 4) memcpy(ar,lev4,sizeof(ar));
+	memcpy(arp,ar,sizeof(ar));
 }
 
 void main()
