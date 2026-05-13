@@ -20,6 +20,7 @@
 #define KEY_SPACE 0x20
 #define KEY_BKSPC 0x7F
 #define KEY_R	  0x52
+#define KEY_N	  0x4E	// next level
 
 // Ардеса микросхем
 
@@ -262,6 +263,60 @@ static unsigned char lev5[25][64] = {
 "                       #                                --#    ",
 "                       #                                  #    "
 };
+static unsigned char lev6[25][64] = {
+"                                                               ",
+"                                                               ",
+"                                                               ",
+"                                                               ",
+"                                            $                  ",
+"              \x09                             @                  ",
+"   $                     $                                     ",
+"   #                     #            #            {  #        ",
+"  ####      #####      ####           ############# ###    ##  ",
+"  #  #111111#   #222222#  #                               #### ",
+"  ####      #####      ####                               #### ",
+"                                                           ##  ",
+" ))))))))))))) (((((((((((((                               ##  ",
+"                                             #~#           ##  ",
+"   $                     $                  #####          ##  ",
+"   &                     &          ###&&#################1##  ",
+"  &&&&      &&&&&      &&&&         ###&&#################&##  ",
+"  &  &&&&&&&&   &&&&&&&&  &&&1---##\"###&&&&&&&&&&&&&&&&&&&&##  ",
+"  &&&&      &&&&&      &&&&      ######                        ",
+"                                                               ",
+"                                                     e         ",
+"                                      ----------------         ",
+"                                                               ",
+"                                                               ",
+"                                                               "
+};                                                                               
+static unsigned char lev7[25][64] = {
+"     \x09                                               @ [#      ",
+"                        &&&                        #1####   O  ",
+" ##        ##         $ &&&&                       #&####  &&& ",
+"####------####2222222&&&&&&&                  ###~##&&&&    &  ",
+"####      ####          &&&                 #######&&&&&&&&&&  ",
+" ##        ##           &&&            #####                   ",
+" ##                      O         @@@###    ((((((((((((((((  ",
+" ##  $                  ####3333########  (((#                 ",
+" ##########           ##        #        (#                    ",
+" ##       @         ##          #  ((((((#                     ",
+" ##       @       @@       #  T #               e              ",
+" ##\"########2222############    #              #-#             ",
+" ## #######      ###########   ##              # #             ",
+" ##    \\\\\\#                                    #-#             ",
+" ##     \\\\#                                    # #             ",
+" ##   $  \\#                                    #-#             ",
+" ##   #   #                       (((          # #             ",
+" ##########))))))))))) (((((((((((###          #-#             ",
+" ##      ###                      ###          # #             ",
+" ##                                            #-#             ",
+" ##                 ## ##                      # #             ",
+" ##                ### ###                     #-#             ",
+" ###              #### ####                      #             ",
+" #####################################################         ",
+"  ####################################################         ",
+};
 
 #define SP 0x20                                                                  
 #define PL 0x09
@@ -394,17 +449,17 @@ void replace(char a,char b)
 	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
 	arpptr = vidmem_y2;
 
-	x = 63;
-	y = 25;
-	do
+	x = 0;
+	y = 0;
+	while (y != 25)
 	{
 		if (*ptr == a)
 			*arpptr = b;
 	ptr++;
 	arpptr++;
-	x--;
-	if (x == 0) {x = 63; y--; ptr++; arpptr+=15;}
-	} while (y != 0);
+	x++;
+	if (x == 63) {x = 0; y++; ptr++; arpptr+=15;}
+	};
 
 //	for(y=0; y<25; y++)
 //	for(x=0; x<63; x++)
@@ -423,9 +478,9 @@ void swap(char a,char b)
 	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
 	arpptr = vidmem_y2;
 
-	x = 63;
-	y = 25;
-	do
+	x = 0;
+	y = 0;
+	while (y != 25)
 	//for(y=0; y<25; y++)
 	//for(x=0; x<63; x++)
 	{
@@ -447,9 +502,9 @@ void swap(char a,char b)
 		}
 	ptr++;
 	arpptr++;
-	x--;
-	if (x == 0) {x = 63; y--; ptr++; arpptr+=15;}
-	} while (y != 0);
+	x++;
+	if (x == 63) {x = 0; y++; ptr++; arpptr+=15;}
+	};
 }
 
 uint8_t isEnemy(char x)
@@ -461,20 +516,6 @@ uint8_t isEnemy(char x)
 		case '{':
 		case '}':
 		case '%':
-			return 1;
-	}
-	return 0;
-}
-uint8_t canfall(char x)
-{
-	switch(x)
-	{
-		case PL:
-		case '[':
-		case ']':
-		case 'O':
-		case '%':
-		case '$':
 			return 1;
 	}
 	return 0;
@@ -508,6 +549,7 @@ stop_loop = 2;
 //uint8_t probe(uint8_t x,uint8_t y, char ch)
 uint8_t probe(char *ptr,char *arpptr, char ch)
 {
+//	if (ptr >= (char*)ar+1600) return 1;
 //	if(y >= 25 || y < 0 || x >= 64 || x < 0) return 1;
 //	if (y > 24 || x > 63) return 1;
 	
@@ -633,21 +675,33 @@ void doFrame1()
 	while (y !=25)	
 	//for(y=0;y<25;y++) for(x=0;x<63;x++)
 	{
+//	sprintf(str_buf,"X=%02d Y=%02d",x,y);
+//	print(29,29,str_buf);
 		//ch = ar[y][x];
 		ch = *ptr;
 		
 		if (ch == 0x20 || ch == 0x23)
 			;
 		else
-		if(canfall(ch) && y == 24)
+		if(y == 24)
 		{
+			switch(ch)
+			{
+				case PL:
+				case '[':
+				case ']':
+				case 'O':
+				case '%':
+				case '$':
+					*arpptr = SP;
+			}
 			//arp[y][x]=SP;
-			*arpptr = SP;
+			//*arpptr = SP;
 		}	
 		else if (ch >= 0x31 && ch <= 0x39)
 		{
 			//if(ar[y-1][x] != SP)
-			if(*(ptr-64) != SP)
+			if(*(ptr-64) != (char)SP)
 				//arp[y][x] = ch-1; //'' + (ch*1-1);
 				*arpptr = ch-1; //'' + (ch*1-1);
 		}
@@ -736,13 +790,22 @@ void doFrame1()
 			
 			case '&':
 			case '?':
-				for(dx=-1;dx<=1;dx++)
-				for(dy=-1;dy<=1;dy++)
-					if(ar[y+dy][x+dx]==(char)'0')
-					{
-						//arp[y][x]='0';
-						*arpptr = '0';
-					}
+				if (*(ptr-65)==(char)'0') *arpptr='0';
+				if (*(ptr-64)==(char)'0') *arpptr='0';
+				if (*(ptr-63)==(char)'0') *arpptr='0';
+				if (*(ptr-1)==(char)'0') *arpptr='0';
+				if (*(ptr)==(char)'0') *arpptr='0';
+				if (*(ptr+1)==(char)'0') *arpptr='0';
+				if (*(ptr+63)==(char)'0') *arpptr='0';
+				if (*(ptr+64)==(char)'0') *arpptr='0';
+				if (*(ptr+65)==(char)'0') *arpptr='0';
+				//for(dx=-1;dx<=1;dx++)
+				//for(dy=-1;dy<=1;dy++)
+				//	if(ar[y+dy][x+dx]==(char)'0')
+				//	{
+				//		//arp[y][x]='0';
+				//		*arpptr = '0';
+				//	}
 				break;
 				
 			case '$':
@@ -966,15 +1029,27 @@ void doFrame1()
 				ob = *(ptr-64);
 				if(conveys(ob))
 				{
-					dir = (ch==(char)')')?1:-1;
-					//if(probe(x+dir,y-1,ob)==0)
-					if(probe(ptr-64+dir,arpptr-78+dir,ob)==0)
+					if (ch==(char)')')
 					{
-						//arp[y-1][x]=SP;
-						*(arpptr-78)=SP;
-						//arp[y-1][x+dir]=ob;
-						*(arpptr-78+dir)=ob;
+						if(probe(ptr-63,arpptr-77,ob)==0)
+						{
+							//arp[y-1][x]=SP;
+							*(arpptr-78)=SP;
+							//arp[y-1][x+dir]=ob;
+							*(arpptr-77)=ob;
+						}
 					}
+					else
+					{
+						if(probe(ptr-65,arpptr-79,ob)==0)
+						{
+							//arp[y-1][x]=SP;
+							*(arpptr-78)=SP;
+							//arp[y-1][x+dir]=ob;
+							*(arpptr-79)=ob;
+						}
+					}
+
 				}
 				break;
 				
@@ -1141,7 +1216,9 @@ void frameLoop()
 			     break;
 		case KEY_RIGHT: key_right = 1;
 			     break;
-		case KEY_R:  stop_loop = 2;
+		case KEY_R:  stop_loop = 3;
+			     break;
+		case KEY_N:  stop_loop = 1;
 			     break;
 		default:
 	}
@@ -1151,12 +1228,14 @@ void frameLoop()
 
 	if (stop_loop)
 	{
+		if (stop_loop==3)
+			print(24,28,"RESTART");
 		print(36,28,"\x82-PRESS ENTER- \x80");
 		while (getch() != KEY_ENTER);	
 		if (stop_loop == 1)
 		{
 			level++;
-			if (level > 5) level = 1;
+			if (level > 7) level = 1;
 		}
 		load(level);
 	}
@@ -1221,6 +1300,8 @@ void load(uint8_t lvl)
 	else if (lvl == 3) memcpy(ar,lev3,sizeof(ar));
 	else if (lvl == 4) memcpy(ar,lev4,sizeof(ar));
 	else if (lvl == 5) memcpy(ar,lev5,sizeof(ar));
+	else if (lvl == 6) memcpy(ar,lev6,sizeof(ar));
+	else if (lvl == 7) memcpy(ar,lev7,sizeof(ar));
 	//memcpy(arp,ar,sizeof(ar));
 	render_level();
 }
