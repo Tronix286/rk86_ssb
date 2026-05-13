@@ -19,6 +19,7 @@
 #define KEY_DOWN  0x1A
 #define KEY_SPACE 0x20
 #define KEY_BKSPC 0x7F
+#define KEY_R	  0x52
 
 // Ардеса микросхем
 
@@ -27,6 +28,7 @@ static uint8_t *VT57 = 0xE000;    // dummy ptr to rcv buf location
 
 uchar* radio86rkVideoMem = (uchar*)(0xE1D0 + 78*3 + 8);
 uchar  radio86rkVideoBpl = 78;
+uchar* vidmem_y2;
 
 void RADIO86RK_SCREEN_END(uint16_t MEM_ADDR, uint8_t FULL_HEIGHT, uint8_t FONT, uint16_t MEM_SIZE, uint8_t HIDDEN_ATTRIB, uint8_t CHAR_GEN) 
 {
@@ -79,6 +81,7 @@ void RADIO86RK_SCREEN_ECONOMY(uint16_t MEM_ADDR, uint8_t FULL_HEIGHT, uint8_t HE
 // // 64x30, 0-5 скрытых атрибут, BPL@78, EOL, использует основное ОЗУ
 void radio86rkScreen2b() {
   RADIO86RK_SCREEN_ECONOMY_EXT(37, 31, 3, 0x77, 78, 1, 1, 0);
+  vidmem_y2 = radio86rkVideoMem+radio86rkVideoBpl*2;
 }
 
 void print2(uchar* dest, char* text) __naked
@@ -388,7 +391,8 @@ void replace(char a,char b)
 	static char *arpptr;
 
 	ptr = (char*)ar;
-	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	arpptr = vidmem_y2;
 
 	x = 63;
 	y = 25;
@@ -416,7 +420,8 @@ void swap(char a,char b)
 	static char *arpptr;
 
 	ptr = (char*)ar;
-	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	arpptr = vidmem_y2;
 
 	x = 63;
 	y = 25;
@@ -520,19 +525,19 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 		case 0x23:
 			break;
 		case PL:
-			if(ob == EX)
+			if(ob == (char)EX)
 			{
 				win();
 				return 0;
 			}
-			else if(ob == '$')
+			else if(ob == (char)'$')
 			{
 				//arp[y][x] = SP;
 				*arpptr = SP;
 				moneyl--;
 				return 0;
 			}
-			else if(ob == '0')
+			else if(ob == (char)'0')
 			{
 				return 1;
 			}
@@ -541,7 +546,7 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 				die();
 				return 1;
 			}
-			else if(ob == 'O')
+			else if(ob == (char)'O')
 			{
 				dir=0;
 				if(key_left) dir--;
@@ -549,7 +554,7 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 				if(dir)
 				{
 					//if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && ar[y][x-dir]==PL)
-					if(probe(ptr+64,arpptr+78,ob) && (probe(ptr+dir,arpptr+dir,ob)==0) && *(ptr-dir)==PL)
+					if(probe(ptr+64,arpptr+78,ob) && (probe(ptr+dir,arpptr+dir,ob)==0) && *(ptr-dir)==(char)PL)
 					{
 						//arp[y][x+dir] = ob;
 						*(arpptr+dir) = ob;
@@ -557,7 +562,7 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 						*arpptr = SP;
 						
 						//if(ar[y+1][x]==';')
-						if (*(ptr+64)==';')
+						if (*(ptr+64)==(char)';')
 							//arp[y+2][x]=SP;
 							*(arpptr+156)=SP;
 							
@@ -572,14 +577,14 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 	
 		case '<':
 		case '>':
-			if(ob == PL) return 0;
+			if(ob == (char)PL) return 0;
 			break;
 		case '}': 
 		case '{': 
 		case ']':
 		case '[':
-			d = (ch=='}'||ch==']')?1:-1;
-			if(ob == 'O' || ob == '$')
+			d = (ch==(char)'}'||ch==(char)']')?1:-1;
+			if(ob == (char)'O' || ob == (char)'$')
 			{
 				//if( probe(x,y+1,ob) && (probe(x+d,y,ob)==0))
 				if( probe(ptr+64,arpptr+78,ob) && (probe(ptr+d,arpptr+d,ob)==0))
@@ -589,7 +594,7 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 					return 0;
 				}
 			}
-			else if(ob == PL)
+			else if(ob == (char)PL)
 			{
 				die();
 				return 0;
@@ -599,7 +604,7 @@ uint8_t probe(char *ptr,char *arpptr, char ch)
 		default:
 			break;
 	}
-	return !(ob==SP && ob1==SP);
+	return !(ob==(char)SP && ob1==(char)SP);
 
 }
 
@@ -621,9 +626,8 @@ void doFrame1()
 	if(key_up) key_up = 2;
 	if(key_down) key_down = 2;
 	ptr = (char*)ar;
-	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
-//	*arpptr = '!';
-//	*(arpptr+64+14) = '!';
+	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	arpptr = vidmem_y2;
 	x = 0;
 	y = 0;
 	while (y !=25)	
@@ -657,7 +661,7 @@ void doFrame1()
 				
 			case '%':
 				//if(y<24 && ar[y+1][x]==';' && arp[y][x]=='%')
-				if(y<24 && *(ptr+64)==';' && *arpptr=='%')
+				if(y<24 && *(ptr+64)==(char)';' && *arpptr==(char)'%')
 				{
 					//arp[y][x]=SP;
 					*arpptr = SP;
@@ -686,9 +690,9 @@ void doFrame1()
 				if(y > 0)
 				{
 					//if(ar[y-1][x]=='O' || ar[y-1][x]=='%') arp[y][x]=';';
-					if(*(ptr-64)=='O' || *(ptr-64)=='%') *arpptr=';';
+					if(*(ptr-64)==(char)'O' || *(ptr-64)==(char)'%') *arpptr=';';
 					//else if(ar[y-1][x]=='X' || ar[y-1][x]=='.')
-					else if(*(ptr-64)=='X' || *(ptr-64)=='.')
+					else if(*(ptr-64)==(char)'X' || *(ptr-64)==(char)'.')
 						//arp[y][x]='.';
 						*arpptr = '.';
 				}
@@ -698,7 +702,7 @@ void doFrame1()
 				if(y > 0)
 				{
 					//if(ar[y-1][x]!='O' && ar[y-1][x]!='%')
-					if(*(ptr-64)!='O' && *(ptr-64)!='%')
+					if(*(ptr-64)!=(char)'O' && *(ptr-64)!=(char)'%')
 						//arp[y][x]=':';
 						*arpptr = ':';
 				}
@@ -706,7 +710,7 @@ void doFrame1()
 				
 			case 'O':
 				//if(y<24 && ar[y+1][x]==';' && arp[y][x]=='O')
-				if(y<24 && *(ptr+64)==';' && *arpptr=='O')
+				if(y<24 && *(ptr+64)==(char)';' && *arpptr==(char)'O')
 				{
 					//arp[y][x]=SP;
 					*arpptr = SP;
@@ -734,7 +738,7 @@ void doFrame1()
 			case '?':
 				for(dx=-1;dx<=1;dx++)
 				for(dy=-1;dy<=1;dy++)
-					if(ar[y+dy][x+dx]=='0')
+					if(ar[y+dy][x+dx]==(char)'0')
 					{
 						//arp[y][x]='0';
 						*arpptr = '0';
@@ -752,7 +756,7 @@ void doFrame1()
 					*arpptr = SP;
 				}
 				//else if((y<24) && (ar[y+1][x]==PL))
-				else if((y<24) && (*(ptr+64)==PL))
+				else if((y<24) && (*(ptr+64)==(char)PL))
 				{
 					//arp[y][x]=SP;
 					*arpptr = SP;
@@ -761,10 +765,10 @@ void doFrame1()
 				
 			case 'T':
 				//if(ar[y-1][x]==PL)
-				if(*(ptr-64)==PL)
+				if(*(ptr-64)==(char)PL)
 				{
 					//if(x>0 && key_left && arp[y-1][x-1]==PL && (probe(x-1,y,ch)==0))
-					if(x>0 && key_left && *(arpptr-79)==PL && (probe(ptr-1,arpptr-1,ch)==0))
+					if(x>0 && key_left && *(arpptr-79)==(char)PL && (probe(ptr-1,arpptr-1,ch)==0))
 					{
 						//arp[y][x-1]=ch;
 						*(arpptr-1)=ch;
@@ -772,7 +776,7 @@ void doFrame1()
 						*arpptr = SP;
 					}
 					//else if(x<79 && key_right && arp[y-1][x+1]==PL && (probe(x+1,y,ch)==0))
-					else if(x<79 && key_right && *(arpptr-77)==PL && (probe(ptr+1,arpptr+1,ch)==0))
+					else if(x<79 && key_right && *(arpptr-77)==(char)PL && (probe(ptr+1,arpptr+1,ch)==0))
 					{
 						//arp[y][x+1]=ch;
 						*(arpptr+1)=ch;
@@ -784,14 +788,14 @@ void doFrame1()
 				
 			case '¦':
 				//if(y > 0 && ar[y-1][x]=='.')
-				if(y > 0 && *(ptr-64)=='.')
+				if(y > 0 && *(ptr-64)==(char)'.')
 					//arp[y][x]='A';
 					*arpptr = 'A';
 				break;
 				
 			case 'A':
 				//if(y > 0 && (ar[y-1][x]==':' || ar[y-1][x]=='.') )
-				if(y > 0 && (*(ptr-64)==':' || *(ptr-64)=='.') )
+				if(y > 0 && (*(ptr-64)==(char)':' || *(ptr-64)==(char)'.') )
 				{
 					//if(probe(x,y+1,'O')==0)
 					if(probe(ptr+64,arpptr+78,'O')==0)
@@ -818,7 +822,7 @@ void doFrame1()
 				{
 					//fl = ar[y+1][x];
 					fl = *(ptr+64);
-					if(fl=='('||fl==')'||tired)
+					if(fl==(char)'('||fl==(char)')'||tired)
 						;
 					else if(key_left)
 					{
@@ -863,7 +867,7 @@ void doFrame1()
 						if(y == 0) {}
 						else
 						//if(ar[y-1][x]=='-' && (probe(x,y-2,ch)==0))
-						if(*(ptr-64)=='-' && (probe(ptr-128,arpptr-156,ch)==0))
+						if(*(ptr-64)==(char)'-' && (probe(ptr-128,arpptr-156,ch)==0))
 						{
 							//arp[y-2][x]=PL;
 							*(arpptr-156)=PL;
@@ -871,7 +875,7 @@ void doFrame1()
 							*arpptr=SP;
 						}
 						//else if(ar[y+1][x]=='"')
-						else if(*(ptr+64)=='"')
+						else if(*(ptr+64)==(char)'"')
 						{
 							//if(probe(x,y-1,ch)==0)
 							if(probe(ptr-64,arpptr-78,ch)==0)
@@ -890,7 +894,7 @@ void doFrame1()
 						if(y == 24) {}
 						else
 						//if(ar[y+1][x]=='-' && (probe(x,y+2,ch)==0))
-						if(*(ptr+64)=='-' && (probe(ptr+128,arpptr+156,ch)==0))
+						if(*(ptr+64)==(char)'-' && (probe(ptr+128,arpptr+156,ch)==0))
 						{
 							//arp[y+2][x]=PL;
 							*(arpptr+156)=PL;
@@ -898,7 +902,7 @@ void doFrame1()
 							*arpptr = SP;
 						}
 						//else if(ar[y+1][x]=='"')
-						else if(*(ptr+64)=='"')
+						else if(*(ptr+64)==(char)'"')
 						{
 							//if(probe(x,y+2,'"')==0)
 							if(probe(ptr+128,arpptr+156,'"')==0)
@@ -912,12 +916,12 @@ void doFrame1()
 							}
 						}
 						//else if(ar[y+1][x]=='~')
-						else if(*(ptr+64)=='~')
+						else if(*(ptr+64)==(char)'~')
 						{
 							replace('@','0');
 						}
 						//else if(ar[y+1][x]=='`')
-						else if(*(ptr+64)=='`')
+						else if(*(ptr+64)==(char)'`')
 						{
 							rflag = 1;
 						}
@@ -931,7 +935,7 @@ void doFrame1()
 				
 			case 'x':
 				//if(ar[y-1][x]!=SP)
-				if(*(ptr-64)!=SP)
+				if(*(ptr-64)!=(char)SP)
 				{
 					//arp[y-1][x]=SP;
 					*(arpptr-78)=SP;
@@ -962,7 +966,7 @@ void doFrame1()
 				ob = *(ptr-64);
 				if(conveys(ob))
 				{
-					dir = (ch==')')?1:-1;
+					dir = (ch==(char)')')?1:-1;
 					//if(probe(x+dir,y-1,ob)==0)
 					if(probe(ptr-64+dir,arpptr-78+dir,ob)==0)
 					{
@@ -976,7 +980,7 @@ void doFrame1()
 				
 			case '<':
 			case '>':
-				dir = (ch=='<')?-1:1;
+				dir = (ch==(char)'<')?-1:1;
 //				if(probe(x+dir,y,ch)==0)
 				if(probe(ptr+dir,arpptr+dir,ch)==0)
 				{
@@ -1004,14 +1008,14 @@ void doFrame1()
 			case '}':
 			case '[':
 			case ']':
-				dir = (ch=='['||ch=='{')?-1:1;
-				gr = (ch=='['||ch==']');
-				od = (dir==1)?(gr?'[':'{'):(gr?']':'}');
+				dir = (ch==(char)'['||ch==(char)'{')?-1:1;
+				gr = (ch==(char)'['||ch==(char)']');
+				od = (dir==1)?(gr?(char)'[':(char)'{'):(gr?(char)']':(char)'}');
 				
 				//fl = ar[y+1][x];
 				fl = *(ptr+64);
 					
-				if(gr && (fl=='('||fl==')'))
+				if(gr && (fl==(char)'('||fl==(char)')'))
 					;
 				else
 				{
@@ -1054,7 +1058,8 @@ void doFrame8()
 	static char *arpptr;
 
 	ptr = (char*)ar;
-	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	//arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+	arpptr = vidmem_y2;
 	x = 0;
 	y = 0;
 	while (y !=25)	
@@ -1072,7 +1077,7 @@ void doFrame8()
 				{
 					//ob = ar[y-1][x];
 					ob = *(ptr-64);
-					if(ob != SP && ob != PL)
+					if(ob != (char)SP && ob != (char)PL)
 					{
 						//if(probe(x,y+1,ob)==0)
 						if(probe(ptr+64,arpptr+78,ob)==0)
@@ -1084,8 +1089,8 @@ void doFrame8()
 				
 			case 'd':
 			case 'b':
-				od = (ch=='d')?'b':'d';
-				dir = (ch=='d')?-1:1;
+				od = (ch==(char)'d')?'b':'d';
+				dir = (ch==(char)'d')?-1:1;
 				{
 					//if(probe(x+dir,y,ch))
 					if(probe(ptr+dir,arpptr+dir,ch))
@@ -1136,6 +1141,8 @@ void frameLoop()
 			     break;
 		case KEY_RIGHT: key_right = 1;
 			     break;
+		case KEY_R:  stop_loop = 2;
+			     break;
 		default:
 	}
 	//sprintf((char *)str_buf,"KEY=%02X",key);
@@ -1144,16 +1151,14 @@ void frameLoop()
 
 	if (stop_loop)
 	{
-		print(36,28,"-PRESS ENTER-");
+		print(36,28,"\x82-PRESS ENTER- \x80");
 		while (getch() != KEY_ENTER);	
 		if (stop_loop == 1)
 		{
 			level++;
 			if (level > 5) level = 1;
-			load(level);
 		}
-		else
-			load(level);
+		load(level);
 	}
 
 	//copyA(arp,ar);
@@ -1225,6 +1230,7 @@ void main()
 	radio86rkScreen2b();
 	//HideCursor();
 	print(22,0,"\x85SUPER SERIF BROTHERS \x80");
+	print(14,30,"ARROW KEYS - MOVEMENT; R - RESTART LEVEL");
 	load(level);
 	frameLoop();
 }
