@@ -119,7 +119,7 @@ char kbhit2() __naked {
   #endasm
 }
 
-static unsigned char arp[25][64];
+//static unsigned char arp[25][64];
 static unsigned char ar[25][64];
 
 
@@ -279,7 +279,49 @@ static uint8_t key_down=0;
 static uint8_t stop_loop=0;
 static char str_buf[40];	// string buffer
 
+void copy_screen() __naked
+{
+  #asm 
+
+    lhld _radio86rkVideoMem
+    lda _radio86rkVideoBpl
+    mov c,a
+    mvi b,0
+    dad bc
+    dad bc		; start at Y = 2
+			; HL = rk86VidMem
+    lxi b,_ar		; BC = _ar
+    mvi d,25		; Y
+    mvi e,63		; X
+cpy_loop:
+    mov a,m     ;t7
+    stax b	;t7	; _ar[] = A
+    inx  b	;t5
+    inx  h	;t5
+    dcr e	;t5
+    xra a	;t4
+    cmp e	;t4	; X = 0 ? end_string_loop
+    jz end_str
+    jmp  cpy_loop
+end_str:
+    dcr d
+    xra a	;t4
+    cmp d	;t4	; Y = 0 ? end_routine
+    jz end_lp
+    inx b
+    mov a,d 	;t5
+    lxi de,15	;t10
+    dad de	;t10
+    mov d,a	;t5
+    mvi e,63
+    jmp cpy_loop
+end_lp:
+    ret
+  #endasm
+}
+
 // draw _arp at screen, copy _arp to _ar
+/*
 void render_level() __naked
 {
   #asm 
@@ -319,8 +361,8 @@ end_lp:
     ret
   #endasm
 }
+*/
 
-/*
 void render_level()
 {
 	static char * line_ptr;
@@ -335,10 +377,10 @@ void render_level()
 			line_ptr+=64;
 		}
 
-	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
-	print(0,28,str_buf);
+//	sprintf((char *)str_buf,"[LEVEL %d] [$ LEFT: %d]",level,moneyl);
+//	print(0,28,str_buf);
 }
-*/
+
 void load(uint8_t lvl);
 
 void pollInput()
@@ -389,30 +431,67 @@ void pollInput()
 void replace(char a,char b)
 {
 	static uint8_t x,y;
-	for(y=0; y<25; y++)
-	for(x=0; x<63; x++)
-		if(ar[y][x]==a)
-			arp[y][x]=b;
+	static char *ptr;
+	static char *arpptr;
+
+	ptr = (char*)ar;
+	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+
+	x = 63;
+	y = 25;
+	do
+	{
+		if (*ptr == a)
+			*arpptr = b;
+	ptr++;
+	arpptr++;
+	x--;
+	if (x == 0) {x = 63; y--; ptr++; arpptr+=15;}
+	} while (y != 0);
+
+//	for(y=0; y<25; y++)
+//	for(x=0; x<63; x++)
+//		if(ar[y][x]==a)
+//			arp[y][x]=b;
 
 }
 
 void swap(char a,char b)
 {
 	static uint8_t x,y;
-	for(y=0; y<25; y++)
-	for(x=0; x<63; x++)
+	static char *ptr;
+	static char *arpptr;
+
+	ptr = (char*)ar;
+	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+
+	x = 63;
+	y = 25;
+	do
+	//for(y=0; y<25; y++)
+	//for(x=0; x<63; x++)
 	{
-		if(ar[y][x]==a)
+		//if(ar[y][x]==a)
+		if (*ptr == a)
 		{
-			arp[y][x]=b;
-			ar[y][x]=SP;
+			//arp[y][x]=b;
+			*arpptr = b;
+			//ar[y][x]=SP;
+			*ptr = SP;
 		}
-		else if(ar[y][x]==b)
+		//else if(ar[y][x]==b)
+		else if(*ptr==b)
 		{
-			arp[y][x]=a;
-			ar[y][x]=SP;
+			//arp[y][x]=a;
+			*arpptr = a;
+			//ar[y][x]=SP;
+			*ptr = SP;
 		}
-	}
+	ptr++;
+	arpptr++;
+	x--;
+	if (x == 0) {x = 63; y--; ptr++; arpptr+=15;}
+	} while (y != 0);
 }
 
 uint8_t isEnemy(char x)
@@ -474,7 +553,7 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 	if (y > 24 || x > 63) return 1;
 	
 	char *ptr = &ar[y][x];
-	char *arpptr = &arp[y][x];
+	char *arpptr = radio86rkVideoMem+ (y+2) * radio86rkVideoBpl + x; //&arp[y][x];
         //char ob = ar[y][x];
 	//char ob1 = arp[y][x];
         char ob = *ptr;
@@ -586,9 +665,10 @@ void doFrame1()
 	if(key_right) key_right = 2;
 	if(key_up) key_up = 2;
 	if(key_down) key_down = 2;
-
 	ptr = (char*)ar;
-	arpptr = (char*)arp;
+	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
+//	*arpptr = '!';
+//	*(arpptr+64+14) = '!';
 	x = 0;
 	y = 0;
 	while (y !=25)	
@@ -627,12 +707,12 @@ void doFrame1()
 					//arp[y][x]=SP;
 					*arpptr = SP;
 					//if(y<23) arp[y+2][x]=ch;
-					if(y<23) *(arpptr+128)=ch;
+					if(y<23) *(arpptr+156)=ch;
 				}
 				else if(probe(x,y+1,ch)==0)
 				{
 					//arp[y+1][x]=ch;
-					*(arpptr+64)=ch;
+					*(arpptr+78)=ch;
 					//arp[y][x]=SP;
 					*arpptr = SP;
 				}
@@ -640,7 +720,7 @@ void doFrame1()
 				else if((y<24) && (*(ptr+64)==PL))
 				{
 					//arp[y+1][x]=ch;
-					*(arpptr+64)=ch;
+					*(arpptr+78)=ch;
 					//arp[y][x]=SP;
 					*arpptr = SP;
 				}
@@ -675,12 +755,12 @@ void doFrame1()
 					//arp[y][x]=SP;
 					*arpptr = SP;
 					//if(y<23) arp[y+2][x]=ch;
-					if(y<23) *(arpptr+128)=ch;
+					if(y<23) *(arpptr+156)=ch;
 				}
 				else if(probe(x,y+1,ch)==0)
 				{
 					//arp[y+1][x]=ch;
-					*(arpptr+64)=ch;
+					*(arpptr+78)=ch;
 					//ar[y][x]=SP;
 					*ptr=SP;
 					//arp[y][x]=SP;
@@ -709,7 +789,7 @@ void doFrame1()
 				if(probe(x,y+1,ch)==0)
 				{
 					//arp[y+1][x]=ch;
-					*(arpptr+64)=ch;
+					*(arpptr+78)=ch;
 					//arp[y][x]=SP;
 					*arpptr = SP;
 				}
@@ -726,7 +806,7 @@ void doFrame1()
 				if(*(ptr-64)==PL)
 				{
 					//if(x>0 && key_left && arp[y-1][x-1]==PL && (probe(x-1,y,ch)==0))
-					if(x>0 && key_left && *(arpptr-65)==PL && (probe(x-1,y,ch)==0))
+					if(x>0 && key_left && *(arpptr-79)==PL && (probe(x-1,y,ch)==0))
 					{
 						//arp[y][x-1]=ch;
 						*(arpptr-1)=ch;
@@ -734,7 +814,7 @@ void doFrame1()
 						*arpptr = SP;
 					}
 					//else if(x<79 && key_right && arp[y-1][x+1]==PL && (probe(x+1,y,ch)==0))
-					else if(x<79 && key_right && *(arpptr-63)==PL && (probe(x+1,y,ch)==0))
+					else if(x<79 && key_right && *(arpptr-77)==PL && (probe(x+1,y,ch)==0))
 					{
 						//arp[y][x+1]=ch;
 						*(arpptr+1)=ch;
@@ -758,7 +838,7 @@ void doFrame1()
 					if(probe(x,y+1,'O')==0)
 					{
 						//arp[y+1][x]='O';
-						*(arpptr+64)='O';
+						*(arpptr+78)='O';
 						//arp[y][x]='¦';
 						*arpptr = '¦';
 					}
@@ -770,7 +850,7 @@ void doFrame1()
 				if(probe(x,y+1,ch)==0)
 				{
 					//arp[y+1][x]=ch;
-					*(arpptr+64) = ch;
+					*(arpptr+78) = ch;
 					//arp[y][x]=SP;
 					*arpptr = SP;
 				}
@@ -792,7 +872,7 @@ void doFrame1()
 						else if(probe(x-1,y-1,ch)==0)
 						{
 							//arp[y-1][x-1] = ch;
-							*(arpptr-65) = ch;
+							*(arpptr-79) = ch;
 							//arp[y][x] = SP;
 							*arpptr = SP;
 						}
@@ -809,7 +889,7 @@ void doFrame1()
 						else if(probe(x+1,y-1,ch)==0)
 						{
 							//arp[y-1][x+1] = ch;
-							*(arpptr-63) = ch;
+							*(arpptr-77) = ch;
 							//arp[y][x] = SP;
 							*arpptr = SP;
 						}
@@ -822,7 +902,7 @@ void doFrame1()
 						if(*(ptr-64)=='-' && (probe(x,y-2,ch)==0))
 						{
 							//arp[y-2][x]=PL;
-							*(arpptr-128)=PL;
+							*(arpptr-156)=PL;
 							//arp[y][x]=SP;
 							*arpptr=SP;
 						}
@@ -832,11 +912,11 @@ void doFrame1()
 							if(probe(x,y-1,ch)==0)
 							{
 								//arp[y+1][x]=SP;
-								*(arpptr+64)=SP;
+								*(arpptr+78)=SP;
 								//arp[y][x]='"';
 								*arpptr = '"';
 								//arp[y-1][x]=ch;
-								*(arpptr-64)=ch;
+								*(arpptr-78)=ch;
 							}
 						}
 					}
@@ -848,7 +928,7 @@ void doFrame1()
 						if(*(ptr+64)=='-' && (probe(x,y+2,ch)==0))
 						{
 							//arp[y+2][x]=PL;
-							*(arpptr+128)=PL;
+							*(arpptr+156)=PL;
 							//arp[y][x]=SP;
 							*arpptr = SP;
 						}
@@ -858,9 +938,9 @@ void doFrame1()
 							if(probe(x,y+2,'"')==0)
 							{
 								//arp[y+2][x]='"';
-								*(arpptr+128)='"';
+								*(arpptr+156)='"';
 								//arp[y+1][x]=ch;
-								*(arpptr+64)=ch;
+								*(arpptr+78)=ch;
 								//arp[y][x]=SP;
 								*arpptr=SP;
 							}
@@ -888,7 +968,7 @@ void doFrame1()
 				if(*(ptr-64)!=SP)
 				{
 					//arp[y-1][x]=SP;
-					*(arpptr-64)=SP;
+					*(arpptr-78)=SP;
 					//arp[y][x]='X';
 					*arpptr = 'X';
 				}
@@ -920,9 +1000,9 @@ void doFrame1()
 					if(probe(x+dir,y-1,ob)==0)
 					{
 						//arp[y-1][x]=SP;
-						*(arpptr-64)=SP;
+						*(arpptr-78)=SP;
 						//arp[y-1][x+dir]=ob;
-						*(arpptr-64+dir)=ob;
+						*(arpptr-78+dir)=ob;
 					}
 				}
 				break;
@@ -943,9 +1023,9 @@ void doFrame1()
 						if(conveys(ob) && (probe(x+dir,y-1,ob)==0) )
 						{
 							//arp[y-1][x] = SP;
-							*(arpptr-64)=SP;
+							*(arpptr-78)=SP;
 							//arp[y-1][x+dir] = ob;
-							*(arpptr-64+dir)=ob;
+							*(arpptr-78+dir)=ob;
 						}
 					}
 				}
@@ -974,7 +1054,7 @@ void doFrame1()
 						//arp[y][x]=SP;
 						*arpptr = SP;
 						//arp[y+1][x]=ch;
-						*(arpptr+64)=ch;
+						*(arpptr+78)=ch;
 					}
 					else
 					{
@@ -989,7 +1069,7 @@ void doFrame1()
 	ptr++;
 	arpptr++;
 	x++;
-	if (x == 63) {x = 0; y++; ptr++; arpptr++;}
+	if (x == 63) {x = 0; y++; ptr++; arpptr+=15;}
 	}
 	if(dead) die();
 }
@@ -1003,7 +1083,7 @@ void doFrame8()
 	static char *arpptr;
 
 	ptr = (char*)ar;
-	arpptr = (char*)arp;
+	arpptr = radio86rkVideoMem+radio86rkVideoBpl*2;
 	x = 0;
 	y = 0;
 	while (y !=25)	
@@ -1025,7 +1105,7 @@ void doFrame8()
 					{
 						if(probe(x,y+1,ob)==0)
 							//arp[y+1][x] = ob;
-							*(arpptr+64) = ob;
+							*(arpptr+78) = ob;
 					}
 				}
 				break;
@@ -1051,7 +1131,7 @@ void doFrame8()
 	ptr++;
 	arpptr++;
 	x++;
-	if (x == 63) {x = 0; y++; ptr++; arpptr++;}
+	if (x == 63) {x = 0; y++; ptr++; arpptr+=15;}
 	}
 }
 
@@ -1081,8 +1161,8 @@ void frameLoop()
 	frames++;
 	
 	//memcpy(ar,arp,sizeof(ar));
-	
-	render_level();
+	copy_screen();	
+//	render_level();
 
 	/*copyA(ar,arp);*/
 	//updatePf(ar)
@@ -1119,7 +1199,8 @@ void load(uint8_t lvl)
 	else if (lvl == 3) memcpy(ar,lev3,sizeof(ar));
 	else if (lvl == 4) memcpy(ar,lev4,sizeof(ar));
 	else if (lvl == 5) memcpy(ar,lev5,sizeof(ar));
-	memcpy(arp,ar,sizeof(ar));
+	//memcpy(arp,ar,sizeof(ar));
+	render_level();
 }
 
 void main()
@@ -1128,6 +1209,5 @@ void main()
 	//HideCursor();
 	print(22,0,"\x85SUPER SERIF BROTHERS \x80");
 	load(level);
-	//render_level();
 	frameLoop();
 }
