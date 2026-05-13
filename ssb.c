@@ -381,53 +381,6 @@ void render_level()
 //	print(0,28,str_buf);
 }
 
-void load(uint8_t lvl);
-
-void pollInput()
-{
-	static char key;
-
-	if(key_left == 2) key_left = 0;
-	if(key_up == 2) key_up = 0;
-	if(key_right == 2) key_right = 0;
-	if(key_down == 2) key_down = 0;
-
-	key = kbhit2();
-	if (key != 0xFF)
-	{
-	//key = getch();
-	switch ((uint8_t)key)
-	{
-		case KEY_UP: key_up = 1;
-			     break;
-		case KEY_DOWN: key_down = 1;
-			     break;
-		case KEY_LEFT: key_left = 1;
-			     break;
-		case KEY_RIGHT: key_right = 1;
-			     break;
-		default:
-	}
-	//sprintf((char *)str_buf,"KEY=%02X",key);
-	//print(0,30,str_buf);
-	}
-
-	if (stop_loop)
-	{
-		print(36,28,"-PRESS ENTER-");
-		while (getch() != KEY_ENTER);	
-		if (stop_loop == 1)
-		{
-			level++;
-			if (level > 5) level = 1;
-			load(level);
-		}
-		else
-			load(level);
-	}
-
-}
-
 void replace(char a,char b)
 {
 	static uint8_t x,y;
@@ -1155,11 +1108,54 @@ void doFrame8()
 	}
 }
 
+void load(uint8_t level);
+
 void frameLoop()
 {
+   static char key;
+
    while(1)
    {
-	pollInput();
+
+	if(key_left == 2) key_left = 0;
+	if(key_up == 2) key_up = 0;
+	if(key_right == 2) key_right = 0;
+	if(key_down == 2) key_down = 0;
+
+	key = kbhit2();
+	if (key != 0xFF)
+	{
+	//key = getch();
+	switch ((uint8_t)key)
+	{
+		case KEY_UP: key_up = 1;
+			     break;
+		case KEY_DOWN: key_down = 1;
+			     break;
+		case KEY_LEFT: key_left = 1;
+			     break;
+		case KEY_RIGHT: key_right = 1;
+			     break;
+		default:
+	}
+	//sprintf((char *)str_buf,"KEY=%02X",key);
+	//print(0,30,str_buf);
+	}
+
+	if (stop_loop)
+	{
+		print(36,28,"-PRESS ENTER-");
+		while (getch() != KEY_ENTER);	
+		if (stop_loop == 1)
+		{
+			level++;
+			if (level > 5) level = 1;
+			load(level);
+		}
+		else
+			load(level);
+	}
+
 	//copyA(arp,ar);
 	//memcpy(arp,ar,sizeof(ar));
 	
@@ -1204,8 +1200,9 @@ void frameLoop()
 			tired = 0;
 		}
 	}
-	//sprintf((char *)str_buf,"FRM:%02X",frames);
+	//sprintf((char *)str_buf,"FRM:%02X NOPS:%d",frames,nops);
 	//print(20,30,str_buf);
+	//nops = 0;
    }
 }
 
