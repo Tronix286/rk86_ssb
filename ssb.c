@@ -294,7 +294,7 @@ void copy_screen() __naked
     mvi d,25		; Y
     mvi e,63		; X
 cpy_loop:
-    mov a,m     ;t7
+    mov a,m     ;t7	; A = _rk86VidMem[]
     stax b	;t7	; _ar[] = A
     inx  b	;t5
     inx  h	;t5
@@ -547,13 +547,14 @@ print(24,28,"YOU DIE");
 stop_loop = 2;
 }
 
-uint8_t probe(uint8_t x,uint8_t y, char ch)
+//uint8_t probe(uint8_t x,uint8_t y, char ch)
+uint8_t probe(char *ptr,char *arpptr, char ch)
 {
 //	if(y >= 25 || y < 0 || x >= 64 || x < 0) return 1;
-	if (y > 24 || x > 63) return 1;
+//	if (y > 24 || x > 63) return 1;
 	
-	char *ptr = &ar[y][x];
-	char *arpptr = radio86rkVideoMem+ (y+2) * radio86rkVideoBpl + x; //&arp[y][x];
+//	char *ptr = &ar[y][x];
+//	char *arpptr = radio86rkVideoMem+ (y+2) * radio86rkVideoBpl + x; //&arp[y][x];
         //char ob = ar[y][x];
 	//char ob1 = arp[y][x];
         char ob = *ptr;
@@ -595,7 +596,7 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 				if(dir)
 				{
 					//if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && ar[y][x-dir]==PL)
-					if(probe(x,y+1,ob) && (probe(x+dir,y,ob)==0) && *(ptr-dir)==PL)
+					if(probe(ptr+64,arpptr+78,ob) && (probe(ptr+dir,arpptr+dir,ob)==0) && *(ptr-dir)==PL)
 					{
 						//arp[y][x+dir] = ob;
 						*(arpptr+dir) = ob;
@@ -605,7 +606,7 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 						//if(ar[y+1][x]==';')
 						if (*(ptr+64)==';')
 							//arp[y+2][x]=SP;
-							*(arpptr+128)=SP;
+							*(arpptr+156)=SP;
 							
 						tired = 1;
 						return 0;
@@ -627,7 +628,8 @@ uint8_t probe(uint8_t x,uint8_t y, char ch)
 			d = (ch=='}'||ch==']')?1:-1;
 			if(ob == 'O' || ob == '$')
 			{
-				if( probe(x,y+1,ob) && (probe(x+d,y,ob)==0))
+				//if( probe(x,y+1,ob) && (probe(x+d,y,ob)==0))
+				if( probe(ptr+64,arpptr+78,ob) && (probe(ptr+d,arpptr+d,ob)==0))
 				{
 					//arp[y][x+d] = ob;
 					*(arpptr+d)=ob;
@@ -709,7 +711,8 @@ void doFrame1()
 					//if(y<23) arp[y+2][x]=ch;
 					if(y<23) *(arpptr+156)=ch;
 				}
-				else if(probe(x,y+1,ch)==0)
+				//else if(probe(x,y+1,ch)==0)
+				else if(probe(ptr+64,arpptr+78,ch)==0)
 				{
 					//arp[y+1][x]=ch;
 					*(arpptr+78)=ch;
@@ -757,7 +760,8 @@ void doFrame1()
 					//if(y<23) arp[y+2][x]=ch;
 					if(y<23) *(arpptr+156)=ch;
 				}
-				else if(probe(x,y+1,ch)==0)
+				//else if(probe(x,y+1,ch)==0)
+				else if(probe(ptr+64,arpptr+78,ch)==0)
 				{
 					//arp[y+1][x]=ch;
 					*(arpptr+78)=ch;
@@ -786,7 +790,8 @@ void doFrame1()
 				
 			case '$':
 				moneyl++;
-				if(probe(x,y+1,ch)==0)
+				//if(probe(x,y+1,ch)==0)
+				if(probe(ptr+64,arpptr+78,ch)==0)
 				{
 					//arp[y+1][x]=ch;
 					*(arpptr+78)=ch;
@@ -806,7 +811,7 @@ void doFrame1()
 				if(*(ptr-64)==PL)
 				{
 					//if(x>0 && key_left && arp[y-1][x-1]==PL && (probe(x-1,y,ch)==0))
-					if(x>0 && key_left && *(arpptr-79)==PL && (probe(x-1,y,ch)==0))
+					if(x>0 && key_left && *(arpptr-79)==PL && (probe(ptr-1,arpptr-1,ch)==0))
 					{
 						//arp[y][x-1]=ch;
 						*(arpptr-1)=ch;
@@ -814,7 +819,7 @@ void doFrame1()
 						*arpptr = SP;
 					}
 					//else if(x<79 && key_right && arp[y-1][x+1]==PL && (probe(x+1,y,ch)==0))
-					else if(x<79 && key_right && *(arpptr-77)==PL && (probe(x+1,y,ch)==0))
+					else if(x<79 && key_right && *(arpptr-77)==PL && (probe(ptr+1,arpptr+1,ch)==0))
 					{
 						//arp[y][x+1]=ch;
 						*(arpptr+1)=ch;
@@ -835,7 +840,8 @@ void doFrame1()
 				//if(y > 0 && (ar[y-1][x]==':' || ar[y-1][x]=='.') )
 				if(y > 0 && (*(ptr-64)==':' || *(ptr-64)=='.') )
 				{
-					if(probe(x,y+1,'O')==0)
+					//if(probe(x,y+1,'O')==0)
+					if(probe(ptr+64,arpptr+78,'O')==0)
 					{
 						//arp[y+1][x]='O';
 						*(arpptr+78)='O';
@@ -847,7 +853,8 @@ void doFrame1()
 				
 			case PL:
 				dead = 0;
-				if(probe(x,y+1,ch)==0)
+				//if(probe(x,y+1,ch)==0)
+				if(probe(ptr+64,arpptr+78,ch)==0)
 				{
 					//arp[y+1][x]=ch;
 					*(arpptr+78) = ch;
@@ -862,14 +869,16 @@ void doFrame1()
 						;
 					else if(key_left)
 					{
-						if(probe(x-1,y,ch)==0)
+						//if(probe(x-1,y,ch)==0)
+						if(probe(ptr-1,arpptr-1,ch)==0)
 						{
 							//arp[y][x-1] = ch;
 							*(arpptr-1) = ch;
 							//arp[y][x] = SP;
 							*arpptr = SP;
 						}
-						else if(probe(x-1,y-1,ch)==0)
+						//else if(probe(x-1,y-1,ch)==0)
+						else if(probe(ptr-65,arpptr-79,ch)==0)
 						{
 							//arp[y-1][x-1] = ch;
 							*(arpptr-79) = ch;
@@ -879,14 +888,16 @@ void doFrame1()
 					}
 					else if(key_right)
 					{
-						if(probe(x+1,y,ch)==0)
+						//if(probe(x+1,y,ch)==0)
+						if(probe(ptr+1,arpptr+1,ch)==0)
 						{
 							//arp[y][x+1] = ch;
 							*(arpptr+1) = ch;
 							//arp[y][x] = SP;
 							*arpptr = SP;
 						}
-						else if(probe(x+1,y-1,ch)==0)
+						//else if(probe(x+1,y-1,ch)==0)
+						else if(probe(ptr-63,arpptr-77,ch)==0)
 						{
 							//arp[y-1][x+1] = ch;
 							*(arpptr-77) = ch;
@@ -899,7 +910,7 @@ void doFrame1()
 						if(y == 0) {}
 						else
 						//if(ar[y-1][x]=='-' && (probe(x,y-2,ch)==0))
-						if(*(ptr-64)=='-' && (probe(x,y-2,ch)==0))
+						if(*(ptr-64)=='-' && (probe(ptr-128,arpptr-156,ch)==0))
 						{
 							//arp[y-2][x]=PL;
 							*(arpptr-156)=PL;
@@ -909,7 +920,8 @@ void doFrame1()
 						//else if(ar[y+1][x]=='"')
 						else if(*(ptr+64)=='"')
 						{
-							if(probe(x,y-1,ch)==0)
+							//if(probe(x,y-1,ch)==0)
+							if(probe(ptr-64,arpptr-78,ch)==0)
 							{
 								//arp[y+1][x]=SP;
 								*(arpptr+78)=SP;
@@ -925,7 +937,7 @@ void doFrame1()
 						if(y == 24) {}
 						else
 						//if(ar[y+1][x]=='-' && (probe(x,y+2,ch)==0))
-						if(*(ptr+64)=='-' && (probe(x,y+2,ch)==0))
+						if(*(ptr+64)=='-' && (probe(ptr+128,arpptr+156,ch)==0))
 						{
 							//arp[y+2][x]=PL;
 							*(arpptr+156)=PL;
@@ -935,7 +947,8 @@ void doFrame1()
 						//else if(ar[y+1][x]=='"')
 						else if(*(ptr+64)=='"')
 						{
-							if(probe(x,y+2,'"')==0)
+							//if(probe(x,y+2,'"')==0)
+							if(probe(ptr+128,arpptr+156,'"')==0)
 							{
 								//arp[y+2][x]='"';
 								*(arpptr+156)='"';
@@ -997,7 +1010,8 @@ void doFrame1()
 				if(conveys(ob))
 				{
 					dir = (ch==')')?1:-1;
-					if(probe(x+dir,y-1,ob)==0)
+					//if(probe(x+dir,y-1,ob)==0)
+					if(probe(ptr-64+dir,arpptr-78+dir,ob)==0)
 					{
 						//arp[y-1][x]=SP;
 						*(arpptr-78)=SP;
@@ -1010,7 +1024,8 @@ void doFrame1()
 			case '<':
 			case '>':
 				dir = (ch=='<')?-1:1;
-				if(probe(x+dir,y,ch)==0)
+//				if(probe(x+dir,y,ch)==0)
+				if(probe(ptr+dir,arpptr+dir,ch)==0)
 				{
 					//arp[y][x]=SP;
 					*arpptr = SP;
@@ -1020,7 +1035,8 @@ void doFrame1()
 					{
 						//ob = ar[y-1][x];
 						ob = *(ptr-64);
-						if(conveys(ob) && (probe(x+dir,y-1,ob)==0) )
+						//if(conveys(ob) && (probe(x+dir,y-1,ob)==0) )
+						if(conveys(ob) && (probe(ptr-64+dir,arpptr-78+dir,ob)==0) )
 						{
 							//arp[y-1][x] = SP;
 							*(arpptr-78)=SP;
@@ -1046,10 +1062,12 @@ void doFrame1()
 					;
 				else
 				{
-					if(probe(x+dir,y,ch) && ((gr==0)||probe(x,y+1,ch)) )
+					//if(probe(x+dir,y,ch) && ((gr==0)||probe(x,y+1,ch)) )
+					if(probe(ptr+dir,arpptr+dir,ch) && ((gr==0)||probe(ptr+64,arpptr+78,ch)) )
 						//arp[y][x]=od;
 						*arpptr = od;
-					else if(gr && (probe(x,y+1,ch)==0))
+					//else if(gr && (probe(x,y+1,ch)==0))
+					else if(gr && (probe(ptr+64,arpptr+78,ch)==0))
 					{
 						//arp[y][x]=SP;
 						*arpptr = SP;
@@ -1103,7 +1121,8 @@ void doFrame8()
 					ob = *(ptr-64);
 					if(ob != SP && ob != PL)
 					{
-						if(probe(x,y+1,ob)==0)
+						//if(probe(x,y+1,ob)==0)
+						if(probe(ptr+64,arpptr+78,ob)==0)
 							//arp[y+1][x] = ob;
 							*(arpptr+78) = ob;
 					}
@@ -1115,7 +1134,8 @@ void doFrame8()
 				od = (ch=='d')?'b':'d';
 				dir = (ch=='d')?-1:1;
 				{
-					if(probe(x+dir,y,ch))
+					//if(probe(x+dir,y,ch))
+					if(probe(ptr+dir,arpptr+dir,ch))
 						//arp[y][x]=od;
 						*arpptr = od;
 					else
